@@ -1,65 +1,86 @@
 <script>
-  import logo from './assets/svelte.png'
-  import Counter from './lib/Counter.svelte'
+  import { onMount } from 'svelte';
+
+  import containerArtifact from '../../artifacts/src/Container/LoogieTank.sol/LoogieTank.json'
+
+  import { sequence } from '0xsequence'
+  import { ethers } from "ethers";
+
+
+  const containerAddress = "0x74F69ee412A1C4Ed55634565e809DaF2ECFdE61D";
+
+  let wallet, isConnected = false;
+  let display, displayLoaded = false;
+
+
+  onMount(() => {
+    wallet = new sequence.Wallet('rinkeby');
+    isConnected = wallet.isConnected();
+
+    wallet.on('message', message => {
+      console.log('wallet event (message):', message)
+    })
+
+    wallet.on('accountsChanged', p => {
+      console.log('wallet event (accountsChanged):', p)
+    })
+
+    wallet.on('chainChanged', p => {
+      console.log('wallet event (chainChanged):', p)
+    })
+
+    wallet.on('connect', p => {
+      console.log('wallet event (connect):', p);
+
+      isConnected = true;
+    })
+
+    wallet.on('disconnect', p => {
+      console.log('wallet event (disconnect):', p);
+
+      isConnected = false;
+    })
+
+    wallet.on('open', p => {
+      console.log('wallet event (open):', p)
+    })
+
+    wallet.on('close', p => {
+      console.log('wallet event (close):', p)
+    })
+  })
+
+  function handleConnectWallet() {
+    wallet.connect({
+      app: "Composable NFT"
+    });
+  }
+
+  function handleDisconnectWallet() {
+    wallet.disconnect();
+    isConnected = false;
+  }
+
+  async function handleLoadContainer() {
+    console.log('loading');
+
+    const provider = wallet.getProvider();
+
+    const containerContract = new ethers.Contract(containerAddress, containerArtifact.abi, provider);
+    const tokenUri = await containerContract.tokenURI(1);
+
+    console.log(tokenUri);
+    display.innerHTML = tokenUri;
+  }
 </script>
 
+
 <main>
-  <img src={logo} alt="Svelte Logo" />
-  <h1>Hello world!</h1>
-
-  <Counter />
-
-  <p>
-    Visit <a href="https://svelte.dev">svelte.dev</a> to learn how to build Svelte
-    apps.
-  </p>
-
-  <p>
-    Check out <a href="https://github.com/sveltejs/kit#readme">SvelteKit</a> for
-    the officially supported framework, also powered by Vite!
-  </p>
+  {#if (isConnected)}
+    <button on:click={handleDisconnectWallet}>Disconnect</button>
+    <button on:click={handleLoadContainer}>Load Container</button>
+    <div bind:this={display}></div>
+  {:else}
+    <button on:click={handleConnectWallet}>Connect</button>
+  {/if}
 </main>
-
-<style>
-  :root {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen,
-      Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
-  }
-
-  main {
-    text-align: center;
-    padding: 1em;
-    margin: 0 auto;
-  }
-
-  img {
-    height: 16rem;
-    width: 16rem;
-  }
-
-  h1 {
-    color: #ff3e00;
-    text-transform: uppercase;
-    font-size: 4rem;
-    font-weight: 100;
-    line-height: 1.1;
-    margin: 2rem auto;
-    max-width: 14rem;
-  }
-
-  p {
-    max-width: 14rem;
-    margin: 1rem auto;
-    line-height: 1.35;
-  }
-
-  @media (min-width: 480px) {
-    h1 {
-      max-width: none;
-    }
-
-    p {
-      max-width: none;
-    }
-  }
-</style>
