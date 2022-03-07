@@ -1,193 +1,207 @@
 pragma solidity >=0.8.0 <0.9.0;
 //SPDX-License-Identifier: MIT
 
+import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
-import "@openzeppelin/contracts/utils/Strings.sol";
-import "../Libraries/ToColor.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
+import 'base64-sol/base64.sol';
+import '../Libraries/HexStrings.sol';
+// import "hardhat/console.sol";
 
-interface ERC721TokenReceiver {
-    function onERC721Received(address _operator, address _from, uint256 _tokenId, bytes memory _data) external returns(bytes4);
+
+interface SvgNftApi {
+    function renderTokenById(uint256 id) external view returns (string memory);
+    function transferFrom(address from, address to, uint256 id) external;
 }
 
-abstract contract Loogies {
-    mapping (uint256 => bytes3) public color;
-    mapping (uint256 => uint256) public chubbiness;
-}
-
-contract LoogieTank is ERC721TokenReceiver {
-
-    event Transfer(address indexed _from, address indexed _to, uint256 indexed _tokenId);
-    event Approval(address indexed _owner, address indexed _approved, uint256 indexed _tokenId);
-    event ApprovalForAll(address indexed _owner, address indexed _operator, bool _approved);
+contract LoogieTank is ERC721Enumerable, Ownable {
 
     using Strings for uint256;
-    using ToColor for bytes3;
+    using Strings for uint8;
+    using HexStrings for uint160;
+    using Counters for Counters.Counter;
 
-    string public constant name = "Loogie Tank";
-    string public constant symbol = "LOOGTANK";
-    Loogies loogieContract = Loogies(0xE203cDC6011879CDe80c6a1DcF322489e4786eB3);
+    Counters.Counter private _tokenIds;
 
-    uint constant tokenId = 1;
-    address public owner;
-    address public approved;
+    bytes4 private constant INTERFACE_ERC721 = 0x80ac58cd;
 
-    uint256[] public loogies;
+    // uint256 constant public price = 5000000000000000; // 0.005 eth
+    uint256 constant public price = 0; // 0.005 eth
 
-    constructor(address _owner) {
-        owner = _owner;
-        emit Transfer(address(0), _owner, tokenId);
+    struct Component {
+        uint256 blockAdded;
+        uint256 id;   // token id of the ERC721 contract at `addr`
+        address addr; // address of the ERC721 contract
+        uint8 x;
+        uint8 y;
+        uint8 scale;
+        int8 dx;
+        int8 dy;
     }
-    // -----------
 
-    function toUint256(bytes memory _bytes) internal pure returns (uint256) {
-        require(_bytes.length >= 32, "toUint256_outOfBounds");
-        uint256 tempUint;
+    mapping(uint256 => Component[]) public componentByTankId;
 
-        assembly {
-            tempUint := mload(add(_bytes, 0x20))
+    constructor() ERC721("Tank", "TANK") {
+    }
+
+    function mintItem() public payable returns (uint256) {
+        require(msg.value >= price, "Sent eth not enough");
+
+        _tokenIds.increment();
+        uint256 id = _tokenIds.current();
+        _mint(msg.sender, id);
+
+        return id;
+    }
+
+    function returnAll(uint256 _id) external {
+        require(msg.sender == ownerOf(_id), "only tank owner can return the NFTs");
+        for (uint256 i = 0; i < componentByTankId[_id].length; i++) {
+            // if transferFrom fails, it will ignore and continue
+            try SvgNftApi(componentByTankId[_id][i].addr).transferFrom(address(this), ownerOf(_id), componentByTankId[_id][i].id) {}
+            catch {}
         }
 
-        return tempUint;
+        delete componentByTankId[_id];
     }
 
-    function onERC721Received(
-            address operator,
-            address from,
-            uint256 loogieTokenId,
-            bytes calldata data) external override returns (bytes4) {
+    function tokenURI(uint256 id) public view override returns (string memory) {
+        require(_exists(id), "token doesn not exist");
+        string memory _name = string(abi.encodePacked('Loogie Tank #',id.toString()));
+        string memory description = string(abi.encodePacked('Loogie Tank'));
+        string memory image = Base64.encode(bytes(generateSVGofTokenById(id)));
 
-        loogies.push(loogieTokenId);
-        return this.onERC721Received.selector;
-    }
-
-    function renderLoogie(bytes3 color, uint256 chubbiness, uint256 x, uint256 y) internal pure returns (string memory) {
-        string memory loogieSVG = string(abi.encodePacked(
-                    '<g transform="translate(', x.toString(), ' ', y.toString(), ')">'
-                    '<g id="eye1">',
-                    '<ellipse stroke-width="3" ry="29.5" rx="29.5" id="svg_1" cy="154.5" cx="181.5" stroke="#000" fill="#fff"/>',
-                    '<ellipse ry="3.5" rx="2.5" id="svg_3" cy="154.5" cx="173.5" stroke-width="3" stroke="#000" fill="#000000"/>',
-                    '</g>',
-                    '<g id="head">',
-                    '<ellipse fill="#',
-                    color.toColor(),
-                    '" stroke-width="3" cx="204.5" cy="211.80065" id="svg_5" rx="',
-                    chubbiness.toString(),
-                    '" ry="51.80065" stroke="#000"/>',
-                    '</g>',
-                    '<g id="eye2">',
-                    '<ellipse stroke-width="3" ry="29.5" rx="29.5" id="svg_2" cy="168.5" cx="209.5" stroke="#000" fill="#fff"/>',
-                    '<ellipse ry="3.5" rx="3" id="svg_4" cy="169.5" cx="208" stroke-width="3" fill="#000000" stroke="#000"/>',
-                    '</g>'
-                    '</g>'
-                    ));
-        return loogieSVG;
-    }
-
-    function renderLoogies() internal view returns (string memory) {
-        string memory loogieSVG = "";
-        for (uint256 i=0; i < loogies.length; i++) {
-            bytes3 color = loogieContract.color(loogies[i]);
-            uint256 chubbiness = loogieContract.chubbiness(loogies[i]);
-            loogieSVG = string(abi.encodePacked(loogieSVG, renderLoogie(color, chubbiness, i+20, i+20)));
-        }
-
-        return loogieSVG;
-    }
-
-    function tokenURI(uint256 _tokenId) external view returns (string memory){
-        require(_tokenId == tokenId, "URI query for nonexistent token");
         return string(abi.encodePacked(
-                    '<svg width="400" height="400" xmlns="http://www.w3.org/2000/svg">',
-                    '<rect x="0" y="0" width="400" height="400" stroke="black" fill="#8FB9EB" stroke-width="5"/>',
-                    renderLoogies(),
-                    '</svg>'));
+                'data:application/json;base64,',
+                Base64.encode(
+                    bytes(
+                        abi.encodePacked(
+                            '{"name":"',
+                            _name,
+                            '", "description":"',
+                            description, '",',
+                            '"owner":"',
+                            (uint160(ownerOf(id))).toHexString(20),
+                            '", "image": "',
+                            'data:image/svg+xml;base64,',
+                            image,
+                            '"}'
+                        )
+                    )
+                )
+            ));
     }
 
-    // -----------
-    function totalSupply() public pure returns (uint256) {
-        return 1;
+    function generateSVGofTokenById(uint256 id) internal view returns (string memory) {
+
+        string memory svg = string(abi.encodePacked(
+                '<svg width="310" height="310" xmlns="http://www.w3.org/2000/svg">',
+                renderTokenById(id),
+                '</svg>'
+            ));
+
+        return svg;
     }
 
-
-    function balanceOf(address _queryAddress) external view returns (uint) {
-        if(_queryAddress == owner) {
-            return 1;
-        } else {
-            return 0;
-        }
+    // Visibility is `public` to enable it being called by other contracts for composition.
+    function renderTokenById(uint256 id) public view returns (string memory) {
+        string memory render = string(abi.encodePacked(
+                '<rect x="0" y="0" width="310" height="310" stroke="black" fill="#8FB9EB" stroke-width="5"/>',
+                renderComponent(id)
+            ));
+        return render;
     }
 
-    function ownerOf(uint _tokenId) external view returns (address) {
-        require(_tokenId == tokenId, "owner query for nonexistent token");
-        return owner;
-    }
+    function renderComponent(uint256 _id) internal view returns (string memory) {
+        string memory svg = "";
 
-    function safeTransferFrom(address _from, address _to, uint _tokenId, bytes memory data) public payable {
-        require(msg.sender == owner || approved == msg.sender, "Msg.sender not allowed to transfer this NFT!");
-        require(_from == owner && _from != address(0) && _tokenId == tokenId);
-        emit Transfer(_from, _to, _tokenId);
-        approved = address(0);
-        owner = _to;
-        if(isContract(_to)) {
-            if(ERC721TokenReceiver(_to).onERC721Received(msg.sender, _from, _tokenId, data) != 0x150b7a02) {
-                revert("receiving address unable to hold ERC721!");
+        for (uint8 i = 0; i < componentByTankId[_id].length; i++) {
+            Component memory c = componentByTankId[_id][i];
+            uint8 blocksTravelled = uint8((block.number - c.blockAdded)%256);
+            uint8 newX;
+            uint8 newY;
+
+            newX = newPos(c.dx, blocksTravelled, c.x);
+            newY = newPos(c.dy, blocksTravelled, c.y);
+
+            svg = string(abi.encodePacked(
+                    svg,
+                    '<g>',
+                    '<animateTransform attributeName="transform" dur="1500s" fill="freeze" type="translate" additive="sum" ',
+                    'values="', newX.toString(), ' ', newY.toString(), ';'));
+
+            for (uint8 j = 0; j < 100; j++) {
+                newX = newPos(c.dx, 1, newX);
+                newY = newPos(c.dy, 1, newY);
+
+                svg = string(abi.encodePacked(
+                        svg,
+                        newX.toString(), ' ', newY.toString(), ';'));
             }
+
+            uint8 scale = c.scale;
+            string memory scaleString="";
+            if (scale != 0) {
+                scaleString = string(abi.encodePacked('values="0.',scale.toString(),' 0.', scale.toString(), '"'));
+            }
+
+            string memory _svg;
+            try SvgNftApi(c.addr).renderTokenById(c.id) returns (string memory __svg) {
+                _svg = __svg;
+            } catch { return ""; }
+            svg = string(abi.encodePacked(
+                    svg,
+                    '"/>',
+                    '<animateTransform attributeName="transform" type="scale" additive="sum" ', scaleString, '/>',
+                    _svg,
+                    '</g>'));
         }
+
+        return svg;
     }
 
-    // changed the first safeTransferFrom's visibility to make this more readable.
-    function safeTransferFrom(address _from, address _to, uint _tokenId) external payable {
-        safeTransferFrom(_from, _to, _tokenId, "");
-    }
+    function newPos(int8 speed, uint8 blocksTraveled, uint8 initPos) internal pure returns (uint8) {
+        uint8 traveled;
+        uint8 start;
 
-    function transferFrom(address _from, address _to, uint _tokenId) external payable {
-        require(msg.sender == owner || approved == msg.sender, "Msg.sender not allowed to transfer this NFT!");
-        require(_from == owner && _from != address(0) && _tokenId == tokenId);
-        emit Transfer(_from, _to, _tokenId);
-        approved = address(0);
-        owner = _to;
-    }
-
-    function approve(address _approved, uint256 _tokenId) external payable {
-        require(msg.sender == owner, "Msg.sender not owner!");
-        require(_tokenId == tokenId, "tokenId invald");
-        emit Approval(owner, _approved, _tokenId);
-        approved = _approved;
-    }
-
-    function setApprovalForAll(address _operator, bool _approved) external {
-        require(msg.sender == owner, "Msg.sender not owner!");
-        if (_approved) {
-            emit ApprovalForAll(owner, _operator, _approved);
-            approved = _operator;
+        if (speed >= 0) {
+        unchecked {
+            traveled = blocksTraveled * uint8(speed);
+            start = initPos + traveled;
+        }
+            return start;
         } else {
-            emit ApprovalForAll(owner, address(0), _approved);
-            approved = address(0);
+        unchecked {
+            traveled = blocksTraveled * uint8(-speed);
+            start = initPos - traveled;
+        }
+            return start;
         }
     }
 
-    function getApproved(uint _tokenId) external view returns (address) {
-        require(_tokenId == tokenId, "approved query for nonexistent token");
-        return approved;
+    function senEthToOwner() external {
+        (bool success, ) = owner().call{value: address(this).balance}("");
+        require(success, "could not send ether");
     }
 
-    function isApprovedForAll(address _owner, address _operator) external view returns (bool) {
-        if(_owner == owner){
-            return approved == _operator;
-        } else {
-            return false;
-        }
-    }
+    function transferNFT(address nftAddr, uint256 tokenId, uint256 tankId, uint8 scale) external {
+        require(ERC721(nftAddr).ownerOf(tokenId) == msg.sender, "you need to own the NFT");
+        require(ownerOf(tankId) == msg.sender, "you need to own the tank");
+        require(nftAddr != address(this), "nice try!");
+        require(componentByTankId[tankId].length < 256, "tank has reached the max limit of 255 components");
 
-    function isContract(address addr) public view returns(bool) {
-        uint size;
-        assembly { size := extcodesize(addr) }
-        return size > 0;
-    }
+        ERC721(nftAddr).transferFrom(msg.sender, address(this), tokenId);
+        require(ERC721(nftAddr).ownerOf(tokenId) == address(this), "NFT not transferred");
 
-    function supportsInterface(bytes4 interfaceID) external pure returns (bool) {
-        return interfaceID == 0x80ac58cd ||
-            interfaceID == 0x01ffc9a7;
+        bytes32 randish = keccak256(abi.encodePacked( blockhash(block.number-1), msg.sender, address(this), tokenId, tankId  ));
+        componentByTankId[tankId].push(Component(
+                block.number,
+                tokenId,
+                nftAddr,
+                uint8(randish[0]),
+                uint8(randish[1]),
+                scale,
+                int8(uint8(randish[2])),
+                int8(uint8(randish[3]))));
     }
-
 }
