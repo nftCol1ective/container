@@ -44,8 +44,8 @@ contract LoogieTank is ERC721Enumerable, Ownable {
     constructor() ERC721("Tank", "TANK") {
     }
 
-    function mintItem() public payable returns (uint256) {
-        require(msg.value >= price, "Sent eth not enough");
+    function mintItem() public returns (uint256) {
+        // require(msg.value >= price, "Sent eth not enough");
 
         _tokenIds.increment();
         uint256 id = _tokenIds.current();
@@ -66,7 +66,7 @@ contract LoogieTank is ERC721Enumerable, Ownable {
     }
 
     function tokenURI(uint256 id) public view override returns (string memory) {
-        require(_exists(id), "token doesn not exist");
+        require(_exists(id), "token does not exist");
         string memory _name = string(abi.encodePacked('Loogie Tank #',id.toString()));
         string memory description = string(abi.encodePacked('Loogie Tank'));
         string memory image = Base64.encode(bytes(generateSVGofTokenById(id)));

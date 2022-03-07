@@ -27,9 +27,11 @@ const config: HardhatUserConfig = {
   },
   networks: addForkConfiguration({
     hardhat: {
+      chainId: 1337,
       initialBaseFeePerGas: 0, // to fix : https://github.com/sc-forks/solidity-coverage/issues/652, see https://github.com/sc-forks/solidity-coverage/issues/652#issuecomment-896330136
     },
     localhost: {
+      chainId: 1337,
       url: node_url('localhost'),
       accounts: accounts(),
     },
