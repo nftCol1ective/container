@@ -7,16 +7,16 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deploy, log } = deployments;
   const { deployer } = await getNamedAccounts();
 
-  const contractName = 'LoogieTank';
+  const contractName = 'TreasureEntities';
 
-  log("-------- Deploying Container")
+  log("-------- Deploying Entities")
   await deploy(contractName, {
     from: deployer,
-    args: [],
+    args: [''],
     log: true,
     autoMine: true, // speed up deployment on local network (ganache, hardhat), no effect on live networks
   });
 };
 
 export default func;
-func.tags = ['all container'];
+func.tags = ['all entities'];

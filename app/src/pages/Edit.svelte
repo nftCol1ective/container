@@ -1,8 +1,7 @@
 <script>
   import { onMount } from "svelte";
 
-  import { containers } from "../lib/store.js";
-  import { account } from "../lib/store.js";
+  import { containers, account, containerAddress, entitiesContract, entitiesAddress } from "../lib/store.js";
 
   let currentIndex = 0;
 
@@ -14,6 +13,13 @@
       currentIndex = split[1];
     }
   })
+
+  async function transferGold() {
+    console.log('transfer gold');
+
+    const tx = await $entitiesContract.safeTransferFrom($entitiesAddress, $containerAddress, currentIndex, 1, []);
+    await tx.wait();
+  }
 </script>
 
 
@@ -27,7 +33,7 @@
 
 {#if ($account)}
   <section id='action'>
-    <button>Load Gold</button>
+    <button on:click={transferGold}>Load Gold</button>
     <button>Load Silver</button>
     <button>Load Elixir</button>
   </section>
