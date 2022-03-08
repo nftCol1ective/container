@@ -2,10 +2,13 @@ pragma solidity >=0.8.0 <0.9.0;
 //SPDX-License-Identifier: MIT
 
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
+import "@openzeppelin/contracts/token/ERC1155/utils/ERC1155Holder.sol";
+
 import "@openzeppelin/contracts/utils/Counters.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/utils/Strings.sol";
+
 import 'base64-sol/base64.sol';
-import '../Libraries/HexStrings.sol';
 import "hardhat/console.sol";
 
 
@@ -15,11 +18,10 @@ interface SvgNftApi {
     function transferFrom(address from, address to, uint256 id) external;
 }
 
-contract LoogieTank is ERC721Enumerable, Ownable {
+contract LoogieTank is ERC721Enumerable, Ownable, ERC1155Holder {
 
     using Strings for uint256;
     using Strings for uint8;
-    using HexStrings for uint160;
     using Counters for Counters.Counter;
 
     Counters.Counter private _tokenIds;
@@ -43,6 +45,9 @@ contract LoogieTank is ERC721Enumerable, Ownable {
     mapping(uint256 => Component[]) public componentsByTankId;
     mapping(address => uint256[]) public tanksByOwner;
 
+    event ContainerMinted(uint256 id);
+
+
     constructor() ERC721("Tank", "TANK") {
     }
 
@@ -54,6 +59,7 @@ contract LoogieTank is ERC721Enumerable, Ownable {
         _mint(msg.sender, id);
 
         tanksByOwner[msg.sender].push(id);
+        emit ContainerMinted(id);
 
         return id;
     }
@@ -95,10 +101,11 @@ contract LoogieTank is ERC721Enumerable, Ownable {
                 Base64.encode(
                     bytes(
                         abi.encodePacked(
-                            '{"name":"', _name, '",',
-                            '"description":"', description, '",',
-                            '"owner":"', (uint160(ownerOf(id))).toHexString(20), '",',
-                            '"image": "data:image/svg+xml;base64,', image,
+                            '{"',
+                                'name":"', _name, '",',
+                                '"description":"', description, '",',
+                                '"image": "data:image/svg+xml;base64,', image, '",',
+                                '"tokenid":"', Strings.toString(id),
                             '"}'
                         )
                     )
@@ -197,6 +204,7 @@ contract LoogieTank is ERC721Enumerable, Ownable {
         require(success, "could not send ether");
     }
 
+    // Receive new NFT
     function transferNFT(address nftAddr, uint256 tokenId, uint256 tankId, uint8 scale) external {
         require(ERC721(nftAddr).ownerOf(tokenId) == msg.sender, "you need to own the NFT");
         require(ownerOf(tankId) == msg.sender, "you need to own the tank");
@@ -216,5 +224,10 @@ contract LoogieTank is ERC721Enumerable, Ownable {
                 scale,
                 int8(uint8(randish[2])),
                 int8(uint8(randish[3]))));
+    }
+
+    // Allows to extend both ERC721 and ERC1155Holder contracts from OpenZeppelin
+    function supportsInterface(bytes4 interfaceId) public view override(ERC721Enumerable, ERC1155Receiver) returns (bool) {
+        return super.supportsInterface(interfaceId);
     }
 }

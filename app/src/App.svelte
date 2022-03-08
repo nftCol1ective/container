@@ -1,13 +1,17 @@
 <script>
   import { onMount } from 'svelte';
 
-  import containerArtifact from '../../deployments/localhost/LoogieTank.json';
+  import Home from './pages/Home.svelte';
+  import Edit from './pages/Edit.svelte';
 
   import { ethers } from "ethers";
   import Web3Modal from "web3modal";
 
+  import { account, containers, contract, provider } from "./lib/store.js";
+  import containerArtifact from '../../deployments/localhost/LoogieTank.json';
 
-  const CONTRACT_ADDRESS = "0x68B1D87F95878fE05B998F19b66F4baba5De1aed";
+
+  const CONTRACT_ADDRESS = "0x5FbDB2315678afecb367f032d93F642f64180aa3";
 
   const providerOptions = {
     /* See Provider Options Section */
@@ -19,71 +23,93 @@
     providerOptions // required
   });
 
-  let account, connectionState;
-  let tanks = [];
+  let page;
   let hasContainer = false;
 
 
   onMount(async () => {
+    page = document.location.hash;
+
+    window.onpopstate = () => page = document.location.hash;
+    window.onhashchange = () => page = document.location.hash;
   })
 
   async function handleConnectWallet() {
-    account = await web3Modal.connect();
+    $account = await web3Modal.connect();
 
-    const provider = new ethers.providers.Web3Provider(account);
-    const contract = new ethers.Contract(CONTRACT_ADDRESS, containerArtifact.abi, provider.getSigner());
+    $provider = new ethers.providers.Web3Provider($account);
+    $contract = new ethers.Contract(CONTRACT_ADDRESS, containerArtifact.abi, $provider.getSigner());
+    $contract.on('ContainerMinted', handleLoadContainers);
 
-    const containerCount = await contract.ownerTankIds();
+    handleLoadContainers();
+
+    const containerCount = await $contract.ownerTankIds();
     hasContainer = containerCount.length > 0;
-    console.log('containerCount', containerCount)
+
+    $provider.on("accountsChanged", (accounts) => {
+      console.log(accounts);
+    });
+
+    $provider.on("chainChanged", (chainId) => {
+      console.log(chainId);
+    });
+
+    $provider.on("connect", (info) => {
+      console.log(info);
+    });
+
+    $provider.on("disconnect", (error) => {
+      console.log(error);
+    });
   }
 
-  async function handleCreateContainer() {
+  export async function handleCreateContainer() {
     console.log('creating');
 
-    const provider = new ethers.providers.Web3Provider(account);
-    const contract = new ethers.Contract(CONTRACT_ADDRESS, containerArtifact.abi, provider.getSigner());
-
-    const tx = await contract.mintItem();
-    const state = tx.hash;
-    const receipt = await tx.wait();
+    const tx = await $contract.mintItem();
+    await tx.wait();
 
     hasContainer = true;
-
-    console.log('created', state, receipt)
   }
 
-  async function handleLoadContainers() {
+  export async function handleLoadContainers() {
     console.log('loading');
 
-    const provider = new ethers.providers.Web3Provider(account);
-    const containerContract = new ethers.Contract(CONTRACT_ADDRESS, containerArtifact.abi, provider.getSigner());
-    const tokenUris = await containerContract.ownerTankUris();
+    const tokenUris = await $contract.ownerTankUris();
 
-    tanks = [];
-    let encoded;
+    $containers = [];
+    let decoded;
     let metadata;
+
     tokenUris.forEach((uri) => {
-      encoded = atob(uri.split(',')[1]);
-      metadata = JSON.parse(encoded);
-      tanks = [...tanks, atob(metadata.image.split(',')[1])]
+      decoded = atob(uri.split(',')[1]);
+      metadata = JSON.parse(decoded);
+      metadata.image = atob(metadata.image.split(',')[1])
+      $containers = [...$containers, metadata]
     })
   }
 </script>
 
 
+<style>
+  main {
+    display: grid;
+    justify-items: center;
+    gap: 10px;
+  }
+</style>
+
+
 <main>
-  {#if (!account)}
+  <h1>NFT Dashboard</h1>
+
+  {#if (!$account)}
     <button on:click={handleConnectWallet}>Connect</button>
+  {/if}
+
+  {#if (page?.startsWith('#edit'))}
+    <Edit />
   {:else}
-    <button on:click={handleCreateContainer}>Create container</button>
-    {#if hasContainer}
-      <button on:click={handleLoadContainers}>Load Container</button>
-      <ul>
-        {#each tanks as tank}
-          <li>{@html tank}</li>
-        {/each}
-      </ul>
-    {/if}
+    <Home bind:hasContainer on:createContainer={handleCreateContainer} on:loadContainers={handleLoadContainers} />
   {/if}
 </main>
