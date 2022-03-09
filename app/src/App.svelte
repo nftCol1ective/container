@@ -7,10 +7,14 @@
   import { ethers } from "ethers";
   import Web3Modal from "web3modal";
 
-  import { account, containers, containerContract, containerAddress, entitiesContract, entitiesAddress, provider } from "./lib/store.js";
+  import { account, containers, containerContract, provider } from "./lib/store.js";
   import containerArtifact from '../../deployments/localhost/LoogieTank.json';
   import entitiesArtifact from '../../deployments/localhost/TreasureEntities.json';
 
+  import { decodeTokenUri } from "./lib/utils.js";
+
+
+  const CONTAINER_ADDRESS = "0x5FbDB2315678afecb367f032d93F642f64180aa3";
 
   const providerOptions = {
     /* See Provider Options Section */
@@ -29,9 +33,6 @@
   onMount(async () => {
     page = document.location.hash;
 
-    $containerAddress = "0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9";
-    $entitiesAddress = "0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9";
-
     // For paging
     window.onpopstate = () => page = document.location.hash;
     window.onhashchange = () => page = document.location.hash;
@@ -41,10 +42,8 @@
     $account = await web3Modal.connect();
 
     $provider = new ethers.providers.Web3Provider($account);
-    $containerContract = new ethers.Contract($containerAddress, containerArtifact.abi, $provider.getSigner());
+    $containerContract = new ethers.Contract(CONTAINER_ADDRESS, containerArtifact.abi, $provider.getSigner());
     $containerContract.on('ContainerMinted', handleLoadContainers);
-
-    $entitiesContract = new ethers.Contract($entitiesAddress, entitiesArtifact.abi, $provider.getSigner());
 
     handleLoadContainers();
 
@@ -83,14 +82,8 @@
     const tokenUris = await $containerContract.ownerTankUris();
 
     $containers = [];
-    let decoded;
-    let metadata;
-
     tokenUris.forEach((uri) => {
-      decoded = atob(uri.split(',')[1]);
-      metadata = JSON.parse(decoded);
-      metadata.image = atob(metadata.image.split(',')[1])
-      $containers = [...$containers, metadata]
+      $containers = [...$containers, decodeTokenUri(uri)]
     })
   }
 </script>
@@ -113,7 +106,7 @@
   {/if}
 
   {#if (page?.startsWith('#edit'))}
-    <Edit />
+    <Edit entitiesArtifact="{entitiesArtifact}" />
   {:else}
     <Home bind:hasContainer on:createContainer={handleCreateContainer} on:loadContainers={handleLoadContainers} />
   {/if}

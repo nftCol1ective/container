@@ -1,7 +1,14 @@
 <script>
   import { onMount } from "svelte";
 
-  import { containers, account, containerAddress, entitiesContract, entitiesAddress } from "../lib/store.js";
+  import { account, containers, entitiesContract, provider } from "../lib/store.js";
+
+  import { ContractFactory } from 'ethers';
+  import { containerContract } from "../lib/store";
+  import { decodeTokenUri } from "../lib/utils.js";
+
+  export let entitiesArtifact;
+
 
   let currentIndex = 0;
 
@@ -14,10 +21,34 @@
     }
   })
 
-  async function transferGold() {
-    console.log('transfer gold');
+  async function handleCreateItemset() {
+    console.log('creating itemset')
 
-    const tx = await $entitiesContract.safeTransferFrom($entitiesAddress, $containerAddress, currentIndex, 1, []);
+    if (!$entitiesContract) {
+      const factory = new ContractFactory(entitiesArtifact.abi, entitiesArtifact.bytecode, $provider.getSigner());
+      const contract = await factory.deploy("");
+      await contract.deployTransaction.wait();
+
+      // $entities = requestAvailableEntities();
+      $entitiesContract = contract;
+
+      console.log('created', $entitiesContract.address);
+    } else {
+      console.error('entity already exists')
+    }
+  }
+
+  async function requestAvailableEntities() {
+    const encoded = await $entitiesContract.getAvailableEntityMetadata();
+    return encoded.map((item => {
+      decodeTokenUri(item);
+    }))
+  }
+
+  async function transferEntity(id) {
+    console.log(`transfer ${id}`);
+
+    const tx = await $entitiesContract.safeTransferFrom($provider.getSigner().getAddress(), $containerContract.address, 0, 1, [0], {from: $provider.getSigner().address});
     await tx.wait();
   }
 </script>
@@ -33,9 +64,13 @@
 
 {#if ($account)}
   <section id='action'>
-    <button on:click={transferGold}>Load Gold</button>
-    <button>Load Silver</button>
-    <button>Load Elixir</button>
+    {#if (!$entitiesContract)}
+      <button on:click={handleCreateItemset}>Create game item set</button>
+    {:else}
+      <button on:click={() => transferEntity(0)}>Transfer Gold</button>
+      <button>Load Silver</button>
+      <button>Load Elixir</button>
+    {/if}
   </section>
 
   {@html $containers[currentIndex]?.image}
