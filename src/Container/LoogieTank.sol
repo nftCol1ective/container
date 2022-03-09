@@ -230,7 +230,7 @@ contract LoogieTank is ERC721Enumerable, Ownable, ERC1155Holder {
             public override returns (bytes4) {
         // transferNFT(from, id, 0, 1);
         console.log('received');
-        return super.onERC1155Received(operator, from, id, value, datax);
+        return super.onERC1155Received(operator, from, id, value, data);
     }
 
     // Allows to extend both ERC721 and ERC1155Holder contracts from OpenZeppelin
