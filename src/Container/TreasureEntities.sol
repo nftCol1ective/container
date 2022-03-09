@@ -37,6 +37,14 @@ contract TreasureEntities is ERC1155PresetMinterPauser, Ownable {
         _mint(msg.sender, ELIXER, 10**18, "");
     }
 
+    function getEntitiesAvailable() public view returns (uint256[] memory) {
+        uint256[] memory entitiesArray = new uint256[](entityList.sizeOfMapping);
+        for (uint256 i = 0; i < entityList.sizeOfMapping; i++) {
+            entitiesArray[i] = entityList.entities[i + 1];
+        }
+        return entitiesArray;
+    }
+
     function uri(uint256 tokenId) public view override returns (string memory) {
         return (_uris[tokenId]);
     }
