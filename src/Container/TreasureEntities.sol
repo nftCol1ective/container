@@ -16,31 +16,31 @@ contract TreasureEntities is ERC1155PresetMinterPauser, Ownable {
 
     struct Entities {
         uint256 sizeOfMapping;
-        mapping(uint256 => uint256) entities;
+        mapping(uint256 => string) entityNames;
     }
 
     Entities public entityList;
 
-    function addValue(uint256 entityId) private onlyOwner {
+    function addValue(string memory entityName) private onlyOwner {
         entityList.sizeOfMapping++;
-        entityList.entities[entityList.sizeOfMapping] = entityId;
+        entityList.entityNames[entityList.sizeOfMapping] = entityName;
     }
 
     mapping(uint256 => string) private _uris;
 
     constructor(string memory uri) public ERC1155PresetMinterPauser(uri) {
-        addValue(GOLD);
+        addValue("GOLD");
         _mint(msg.sender, GOLD, 10**18, "");
-        addValue(SILVER);
+        addValue("SILVER");
         _mint(msg.sender, SILVER, 10**27, "");
-        addValue(ELIXER);
+        addValue("ELIXER");
         _mint(msg.sender, ELIXER, 10**18, "");
     }
 
-    function getEntitiesAvailable() public view returns (uint256[] memory) {
-        uint256[] memory entitiesArray = new uint256[](entityList.sizeOfMapping);
+    function getEntitiesAvailable() public view returns (string[] memory) {
+        string[] memory entitiesArray = new string[](entityList.sizeOfMapping);
         for (uint256 i = 0; i < entityList.sizeOfMapping; i++) {
-            entitiesArray[i] = entityList.entities[i + 1];
+            entitiesArray[i] = entityList.entityNames[i + 1];
         }
         return entitiesArray;
     }
