@@ -1,10 +1,9 @@
 <script>
   import { onMount } from "svelte";
 
-  import { account, containers, entitiesContract, provider } from "../lib/store.js";
+  import { account, containers, containerContract, entitiesContract, provider } from "../lib/store.js";
 
   import { ContractFactory } from 'ethers';
-  import { containerContract } from "../lib/store";
   import { decodeTokenUri } from "../lib/utils.js";
 
   export let entitiesArtifact;
@@ -17,7 +16,7 @@
     const split = document.location.hash.split('/');
 
     if (split.length === 2) {
-      currentIndex = split[1];
+      currentIndex = Number.parseInt(split[1]);
     }
   })
 
@@ -31,6 +30,8 @@
 
       // $entities = requestAvailableEntities();
       $entitiesContract = contract;
+
+      $containerContract.setEntityContractAddress(contract.address);
 
       console.log('created', $entitiesContract.address);
     } else {
@@ -48,7 +49,8 @@
   async function transferEntity(id) {
     console.log(`transfer ${id}`);
 
-    const tx = await $entitiesContract.safeTransferFrom($provider.getSigner().getAddress(), $containerContract.address, 0, 1, [0], {from: $provider.getSigner().address});
+    const tx = await $entitiesContract.safeTransferFrom($provider.getSigner().getAddress(),
+      $containerContract.address, id, 1, [currentIndex]);
     await tx.wait();
   }
 </script>

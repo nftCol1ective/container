@@ -12,6 +12,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   log("-------- Deploying Entities")
   await deploy(contractName, {
     from: deployer,
+    contract: "/src/Container/TreasureEntities.sol:TreasureEntities",
     args: [''],
     log: true,
     autoMine: true, // speed up deployment on local network (ganache, hardhat), no effect on live networks

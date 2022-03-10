@@ -14,7 +14,7 @@
   import { decodeTokenUri } from "./lib/utils.js";
 
 
-  const CONTAINER_ADDRESS = "0x5FbDB2315678afecb367f032d93F642f64180aa3";
+  const CONTAINER_ADDRESS = "0xFd6b2fCE02ccAbF4273674fEAd5BDBB369FCF3F0";
 
   const providerOptions = {
     /* See Provider Options Section */

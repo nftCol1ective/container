@@ -12,11 +12,10 @@ import 'base64-sol/base64.sol';
 import "hardhat/console.sol";
 
 
-interface SvgNftApi {
+interface TreasureEntities {
     function renderTokenById(uint256 id) external view returns (string memory);
-
-    function transferFrom(address from, address to, uint256 id) external;
 }
+
 
 contract LoogieTank is ERC721Enumerable, Ownable, ERC1155Holder {
 
@@ -31,10 +30,13 @@ contract LoogieTank is ERC721Enumerable, Ownable, ERC1155Holder {
     // uint256 constant public price = 5000000000000000; // 0.005 eth
     uint256 constant public price = 0; // 0.005 eth
 
-    struct Component {
+    address entitiesContractAddress;
+
+    struct Entity {
         uint256 blockAdded;
-        uint256 id;   // token id of the ERC721 contract at `addr`
-        address addr; // address of the ERC721 contract
+        uint256 id;
+        address addr;
+        uint8 tokenType;    // ERC721 or 1155
         uint8 x;
         uint8 y;
         uint8 scale;
@@ -42,13 +44,17 @@ contract LoogieTank is ERC721Enumerable, Ownable, ERC1155Holder {
         int8 dy;
     }
 
-    mapping(uint256 => Component[]) public componentsByTankId;
-    mapping(address => uint256[]) public tanksByOwner;
+    mapping( uint256 => Entity[]) public EntitiesByTankId;
+    mapping( address => uint256[]) public tanksByOwner;
 
     event ContainerMinted(uint256 id);
+    event EntityReceived(uint256 id, uint256 value);
 
 
-    constructor() ERC721("Tank", "TANK") {
+    constructor() ERC721("Tank", "TANK") {}
+
+    function setEntityContractAddress(address _entitiesContractAddress) public {
+        entitiesContractAddress = _entitiesContractAddress;
     }
 
     function mintItem() public returns (uint256) {
@@ -81,17 +87,18 @@ contract LoogieTank is ERC721Enumerable, Ownable, ERC1155Holder {
 
     function returnAll(uint256 _id) external {
         require(msg.sender == ownerOf(_id), "only tank owner can return the NFTs");
-        for (uint256 i = 0; i < componentsByTankId[_id].length; i++) {
+        for (uint256 i = 0; i < EntitiesByTankId[_id].length; i++) {
             // if transferFrom fails, it will ignore and continue
-            try SvgNftApi(componentsByTankId[_id][i].addr).transferFrom(address(this), ownerOf(_id), componentsByTankId[_id][i].id) {}
-            catch {}
+//            try SvgNftApi(EntitiesByTankId[_id][i].addr).transferFrom(address(this), ownerOf(_id), EntitiesByTankId[_id][i].id) {}
+//            catch {}
         }
 
-        delete componentsByTankId[_id];
+        delete EntitiesByTankId[_id];
     }
 
     function tokenURI(uint256 id) public view override returns (string memory) {
         require(_exists(id), "token does not exist");
+
         string memory _name = string(abi.encodePacked('Loogie Tank #', id.toString()));
         string memory description = string(abi.encodePacked('Loogie Tank'));
         string memory image = Base64.encode(bytes(generateSVGofTokenById(id)));
@@ -125,7 +132,7 @@ contract LoogieTank is ERC721Enumerable, Ownable, ERC1155Holder {
 
     // Visibility is `public` to enable it being called by other contracts for composition.
     function renderTokenById(uint256 id) public view returns (string memory) {
-        string memory render = string(abi.encodePacked(
+    string memory render = string(abi.encodePacked(
                 '<rect x="0" y="0" width="310" height="310" stroke="black" fill="#8FB9EB" stroke-width="5"/>',
                 renderComponent(id)
             ));
@@ -135,8 +142,8 @@ contract LoogieTank is ERC721Enumerable, Ownable, ERC1155Holder {
     function renderComponent(uint256 _id) internal view returns (string memory) {
         string memory svg = "";
 
-        for (uint8 i = 0; i < componentsByTankId[_id].length; i++) {
-            Component memory c = componentsByTankId[_id][i];
+        for (uint8 i = 0; i < EntitiesByTankId[_id].length; i++) {
+            Entity memory c = EntitiesByTankId[_id][i];
             uint8 blocksTravelled = uint8((block.number - c.blockAdded) % 256);
             uint8 newX;
             uint8 newY;
@@ -166,9 +173,11 @@ contract LoogieTank is ERC721Enumerable, Ownable, ERC1155Holder {
             }
 
             string memory _svg;
-            try SvgNftApi(c.addr).renderTokenById(c.id) returns (string memory __svg) {
+
+            try TreasureEntities(entitiesContractAddress).renderTokenById(0) returns (string memory __svg) {
                 _svg = __svg;
             } catch {return "";}
+
             svg = string(abi.encodePacked(
                     svg,
                     '"/>',
@@ -209,28 +218,37 @@ contract LoogieTank is ERC721Enumerable, Ownable, ERC1155Holder {
         require(ERC721(nftAddr).ownerOf(tokenId) == msg.sender, "you need to own the NFT");
         require(ownerOf(tankId) == msg.sender, "you need to own the tank");
         require(nftAddr != address(this), "nice try!");
-        require(componentsByTankId[tankId].length < 256, "tank has reached the max limit of 255 components");
+        require(EntitiesByTankId[tankId].length < 256, "tank has reached the max limit of 255 components");
 
         ERC721(nftAddr).transferFrom(msg.sender, address(this), tokenId);
         require(ERC721(nftAddr).ownerOf(tokenId) == address(this), "NFT not transferred");
 
-        bytes32 randish = keccak256(abi.encodePacked(blockhash(block.number - 1), msg.sender, address(this), tokenId, tankId));
-        componentsByTankId[tankId].push(Component(
-                block.number,
-                tokenId,
-                nftAddr,
-                uint8(randish[0]),
-                uint8(randish[1]),
-                scale,
-                int8(uint8(randish[2])),
-                int8(uint8(randish[3]))));
+        registerToken(nftAddr, tankId, tokenId, 1, 0);
     }
 
     function onERC1155Received(address operator, address from, uint256 id, uint256 value, bytes memory data)
             public override returns (bytes4) {
-        // transferNFT(from, id, 0, 1);
-        console.log('received');
+        console.log('received token with id ', id);
+
+        // FIX: Need to use data here
+        registerToken(from, 1, id, value, 1);
         return super.onERC1155Received(operator, from, id, value, data);
+    }
+
+    function registerToken(address from, uint tankId, uint256 tokenId, uint256 value, uint8 tokenType) internal {
+        bytes32 randish = keccak256(abi.encodePacked(blockhash(block.number - 1), msg.sender, address(this), tokenId, tankId));
+        EntitiesByTankId[tankId].push(Entity(
+                block.number,
+                tokenId,
+                from,
+                tokenType,
+                uint8(randish[0]),
+                uint8(randish[1]),
+                1,
+                int8(uint8(randish[2])),
+                int8(uint8(randish[3]))));
+
+        emit EntityReceived(tokenId, value);
     }
 
     // Allows to extend both ERC721 and ERC1155Holder contracts from OpenZeppelin
