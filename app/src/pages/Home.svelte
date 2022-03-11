@@ -1,15 +1,25 @@
 <script>
-  import { createEventDispatcher } from 'svelte';
-
-  import { containers, containerContract, entitiesContract } from "../lib/store.js";
+  import { onMount } from 'svelte';
   import { decodeTokenUri } from "../lib/utils.js";
 
-  export let hasContainer;
+  import {
+    containers,
+    localContainerContract,
+    containerTypes,
+    entitiesContract
+  } from "../lib/store.js";
 
-  let dispatcher = createEventDispatcher();
 
-  let containerType;
+  let containerType = '0';
 
+  let selectedToken = [];
+
+
+  onMount(async () => {
+    if ($containerTypes.length === 0) {
+      $containerTypes = await $localContainerContract.getContainerTypes();
+    }
+  })
 
   async function requestAvailableEntities() {
     const encoded = await $entitiesContract.getAvailableEntityMetadata();
@@ -18,16 +28,17 @@
     }))
   }
 
-  export async function handleCreateContainer() {
-    console.log('creating');
+  function handleTypeSelection(event) {
+    containerType = event.target.value;
 
-    const tx = await $containerContract.setupNewContainer();
-    await tx.wait();
+    // TODO: Get the available tokens per container type from some datasource, ABI for example
 
-    hasContainer = true;
-    window.location.hash = `edit/${tx.id}`;
+    selectedToken = [];
   }
 
+  function handleSetupContainer(event) {
+
+  }
 </script>
 
 
@@ -49,116 +60,113 @@
 
 
 <section id="action">
-    <button
-      on:click={handleCreateContainer}
-      disabled="{containerType === '0'}"
-    >Create container</button>
+  <!--      disabled="{containerType === '0'}"-->
+
+  <button
+      on:click={handleSetupContainer}
+    >Setup container</button>
 </section>
 <label>
   <span>Container type</span>
-  <select bind:value={containerType}>
+  <select on:change={handleTypeSelection}>
     <option value="0">--choose--</option>
-    <option value="1">Gaming</option>
-    <option value="2">Membership</option>
-    <option value="3">Art</option>
-    <option value="4">Ticket</option>
-    <option value="5">Ownership</option>
-    <option value="6">Avatar</option>
-    <option value="7">Collection</option>
+    {#each $containerTypes as type, index}
+      <option value="{index + 1}">{type}</option>
+    {/each}
   </select>
 </label>
 <div>
   <p>Token set (different for every container type)</p>
   {#if containerType === '1'}
     <label>
+      <input type="checkbox" bind:group={selectedToken} name="{containerType}" value='0' />
       <span>Gold</span>
-      <input type="checkbox"/>
     </label>
     <label>
+      <input type="checkbox" bind:group={selectedToken} name="{containerType}" value='1'/>
       <span>Silver</span>
-      <input type="checkbox"/>
     </label>
     <label>
+      <input type="checkbox" bind:group={selectedToken} name="{containerType}" value='2'/>
       <span>Elixir</span>
-      <input type="checkbox"/>
     </label>
   {:else if containerType === '2'}
     <label>
+      <input type="checkbox" bind:group={selectedToken} name="{containerType}" value='0' />
       <span>Admin</span>
-      <input type="checkbox"/>
     </label>
     <label>
+      <input type="checkbox" bind:group={selectedToken} name="{containerType}" value='1' />
       <span>Mentor</span>
-      <input type="checkbox"/>
     </label>
     <label>
+      <input type="checkbox" bind:group={selectedToken} name="{containerType}" value='2'/>
       <span>Contributor</span>
-      <input type="checkbox"/>
     </label>
   {:else if containerType === '3'}
     <label>
+      <input type="checkbox" bind:group={selectedToken} name="{containerType}" value='0' />
       <span>Abstract background</span>
-      <input type="checkbox"/>
     </label>
     <label>
+      <input type="checkbox" bind:group={selectedToken} name="{containerType}" value='1'/>
       <span>Forest</span>
-      <input type="checkbox"/>
     </label>
     <label>
+      <input type="checkbox" bind:group={selectedToken} name="{containerType}" value='2' />
       <span>Daylight</span>
-      <input type="checkbox"/>
     </label>
   {:else if containerType === '4'}
     <label>
+      <input type="checkbox" bind:group={selectedToken} name="{containerType}" value='0' />
       <span>Hospitality</span>
-      <input type="checkbox"/>
     </label>
     <label>
+      <input type="checkbox" bind:group={selectedToken} name="{containerType}" value='1' />
       <span>Greet&Meet</span>
-      <input type="checkbox"/>
     </label>
     <label>
+      <input type="checkbox" bind:group={selectedToken} name="{containerType}" value='2' />
       <span>Merchandise</span>
-      <input type="checkbox"/>
     </label>
   {:else if containerType === '5'}
     <label>
+      <input type="checkbox" bind:group={selectedToken} name="{containerType}" value='0'/>
       <span>Car</span>
-      <input type="checkbox"/>
     </label>
     <label>
+      <input type="checkbox" bind:group={selectedToken} name="{containerType}" value='1'/>
       <span>House</span>
-      <input type="checkbox"/>
     </label>
     <label>
+      <input type="checkbox" bind:group={selectedToken} name="{containerType}" value='2'/>
       <span>Boat</span>
-      <input type="checkbox"/>
     </label>
   {:else if containerType === '6'}
     <label>
+      <input type="checkbox" bind:group={selectedToken} name="{containerType}" value='0'/>
       <span>Developer</span>
-      <input type="checkbox"/>
     </label>
     <label>
+      <input type="checkbox" bind:group={selectedToken} name="{containerType}" value='1'/>
       <span>Contributor</span>
-      <input type="checkbox"/>
     </label>
     <label>
+      <input type="checkbox" bind:group={selectedToken} name="{containerType}" value='2'/>
       <span>Certified</span>
-      <input type="checkbox"/>
     </label>
   {:else if containerType === '7'}
     <label>
+      <input type="checkbox" bind:group={selectedToken} name="{containerType}" value='0'/>
       <span>Abstrat Art</span>
-      <input type="checkbox"/>
     </label>
     <label>
+      <input type="checkbox" bind:group={selectedToken} name="{containerType}" value='1'/>
       <span>Magic</span>
-      <input type="checkbox"/>
     </label>
     <label>
+      <input type="checkbox" bind:group={selectedToken} name="{containerType}" value='2'/>
       <span>POAP</span>
-      <input type="checkbox"/>
     </label>
   {/if}
 </div>

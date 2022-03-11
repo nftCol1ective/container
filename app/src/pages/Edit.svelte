@@ -2,7 +2,7 @@
   import { onMount } from "svelte";
 
   import { containers } from "../lib/store.js";
-  
+
   export let entitiesArtifact;
 
 

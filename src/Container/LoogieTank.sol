@@ -39,6 +39,16 @@ contract LoogieTank is ERC721Enumerable, Ownable, ERC1155Holder {
         int8 dy;
     }
 
+    string[] containerTypes = [
+        "Gaming",
+        "Membership",
+        "Art",
+        "Ticket",
+        "Ownership",
+        "Avatar",
+        "Collection"
+    ];
+
     mapping( uint256 => Entity[]) public EntitiesByTankId;
     mapping( address => uint256[]) public tanksByOwner;
     mapping( uint256 => address) public itemsetByTankId;
@@ -48,6 +58,10 @@ contract LoogieTank is ERC721Enumerable, Ownable, ERC1155Holder {
 
 
     constructor() ERC721("Tank", "TANK") {}
+
+    function getContainerTypes() external view returns (string[] memory) {
+        return containerTypes;
+    }
 
     function setEntityContractAddress(uint256 tankId, address _entitiesContractAddress) public {
         itemsetByTankId[tankId] = _entitiesContractAddress;
@@ -100,8 +114,8 @@ contract LoogieTank is ERC721Enumerable, Ownable, ERC1155Holder {
         require(msg.sender == ownerOf(_id), "only tank owner can return the NFTs");
         for (uint256 i = 0; i < EntitiesByTankId[_id].length; i++) {
             // if transferFrom fails, it will ignore and continue
-//            try SvgNftApi(EntitiesByTankId[_id][i].addr).transferFrom(address(this), ownerOf(_id), EntitiesByTankId[_id][i].id) {}
-//            catch {}
+            //            try SvgNftApi(EntitiesByTankId[_id][i].addr).transferFrom(address(this), ownerOf(_id), EntitiesByTankId[_id][i].id) {}
+            //            catch {}
         }
 
         delete EntitiesByTankId[_id];
@@ -143,7 +157,7 @@ contract LoogieTank is ERC721Enumerable, Ownable, ERC1155Holder {
 
     // Visibility is `public` to enable it being called by other contracts for composition.
     function renderTokenById(uint256 id) public view returns (string memory) {
-    string memory render = string(abi.encodePacked(
+        string memory render = string(abi.encodePacked(
                 '<rect x="0" y="0" width="310" height="310" stroke="black" fill="#8FB9EB" stroke-width="5"/>',
                 renderComponent(id)
             ));
@@ -237,20 +251,27 @@ contract LoogieTank is ERC721Enumerable, Ownable, ERC1155Holder {
         registerToken(nftAddr, tankId, tokenId, 1, 0);
     }
 
-    function onERC1155Received(address operator, address from, uint256 id, uint256 value, bytes memory data)
-            public override returns (bytes4) {
+    function onERC1155Received(address operator, address from, uint256 id, uint256 value, bytes memory data) public override returns (bytes4) {
         console.log('received token with id ', id);
 
-        registerToken(from, ToUint.bytesToUint(data), id, value, 1);
+        registerToken(from, bytesToUint(data), id, value, 1);
         return super.onERC1155Received(operator, from, id, value, data);
     }
 
     function registerToken(address from, uint tankId, uint256 tokenId, uint256 value, uint8 tokenType) internal {
         bytes32 randish = keccak256(abi.encodePacked(blockhash(block.number - 1), msg.sender, address(this), tokenId, tankId));
         EntitiesByTankId[tankId].push(Entity(block.number, tokenId, from, tokenType,
-                uint8(randish[0]), uint8(randish[1]), 1, int8(uint8(randish[2])), int8(uint8(randish[3]))));
+            uint8(randish[0]), uint8(randish[1]), 1, int8(uint8(randish[2])), int8(uint8(randish[3]))));
 
         emit EntityReceived(tokenId, value);
+    }
+
+    function bytesToUint(bytes memory b) public returns (uint256){
+        uint256 number;
+        for (uint i = 0; i < b.length; i++) {
+            number = number + uint256(uint8(b[i]) * (2 ** (8 * (b.length - (i + 1)))));
+        }
+        return number;
     }
 
     // Allows to extend both ERC721 and ERC1155Holder contracts from OpenZeppelin

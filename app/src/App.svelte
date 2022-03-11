@@ -7,16 +7,14 @@
   import { ContractFactory, ethers } from "ethers";
   import Web3Modal from "web3modal";
 
-  import { account, containers, containerContract, provider, entitiesContract } from "./lib/store.js";
+  import { account, containers, CONTAINER_ADDRESS, localContainerContract, containerContract, provider, entitiesContract } from "./lib/store.js";
   import containerArtifact from '../../deployments/localhost/LoogieTank.json';
   import entitiesArtifact from '../../deployments/localhost/TreasureEntities.json';
 
   import { decodeTokenUri } from "./lib/utils.js";
 
 
-  const CONTAINER_ADDRESS = "0xFd6b2fCE02ccAbF4273674fEAd5BDBB369FCF3F0";
-
-  const providerOptions = {
+  let  providerOptions = {
     /* See Provider Options Section */
   };
 
@@ -30,7 +28,7 @@
   let hasContainer = false;
 
 
-  onMount(async () => {
+  onMount(() => {
     page = document.location.hash;
 
     // For paging
@@ -43,11 +41,9 @@
 
     $provider = new ethers.providers.Web3Provider($account);
     $containerContract = new ethers.Contract(CONTAINER_ADDRESS, containerArtifact.abi, $provider.getSigner());
-    $containerContract.on('ContainerMinted', handleLoadContainers);
+    $containerContract.once('ContainerMinted', handleLoadContainers);
 
-    handleLoadContainers();
-
-    const containerCount = await $containerContract.ownerTankIds();
+    const containerCount = await $localContainerContract.ownerTankIds();
     hasContainer = containerCount.length > 0;
 
     $provider.on("accountsChanged", (accounts) => {
@@ -66,6 +62,37 @@
       console.log(error);
     });
   }
+
+/*
+  export async function handleSetupContainer() {
+    console.log('creating');
+
+    await handleConnectWallet();
+
+    const tx = await $containerContract.mintItem();
+    await tx.wait();
+
+    const containerId = tx.value.toNumber();
+
+    const factory = new ContractFactory(entitiesArtifact.abi, entitiesArtifact.bytecode, $provider.getSigner());
+    const itemSet = await factory.deploy("");
+    await itemSet.deployTransaction.wait();
+    $entitiesContract = itemSet;
+
+    await itemSet.mint(CONTAINER_ADDRESS, 0, 200, [containerId]);
+
+
+    console.log('storing')
+
+    $containerContract.setEntityContractAddress(containerId, itemSet.address);
+
+
+    // eventually setApproval
+
+
+    // window.location.hash = `edit/${tx.id}`;
+  }
+*/
 
   export async function handleLoadContainers() {
     console.log('loading');
@@ -127,6 +154,6 @@
   {#if (page?.startsWith('#edit'))}
     <Edit entitiesArtifact="{entitiesArtifact}" />
   {:else}
-    <Home bind:hasContainer />
+    <Home />
   {/if}
 </main>
