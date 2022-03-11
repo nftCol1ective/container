@@ -4,10 +4,10 @@
   import Home from './pages/Home.svelte';
   import Edit from './pages/Edit.svelte';
 
-  import { ethers } from "ethers";
+  import { ContractFactory, ethers } from "ethers";
   import Web3Modal from "web3modal";
 
-  import { account, containers, containerContract, provider } from "./lib/store.js";
+  import { account, containers, containerContract, provider, entitiesContract } from "./lib/store.js";
   import containerArtifact from '../../deployments/localhost/LoogieTank.json';
   import entitiesArtifact from '../../deployments/localhost/TreasureEntities.json';
 
@@ -67,15 +67,6 @@
     });
   }
 
-  export async function handleCreateContainer() {
-    console.log('creating');
-
-    const tx = await $containerContract.mintItem();
-    await tx.wait();
-
-    hasContainer = true;
-  }
-
   export async function handleLoadContainers() {
     console.log('loading');
 
@@ -86,6 +77,34 @@
       $containers = [...$containers, decodeTokenUri(uri)]
     })
   }
+
+  async function handleCreateItemset() {
+    console.log('creating itemset')
+
+    if (!$entitiesContract) {
+      const factory = new ContractFactory(entitiesArtifact.abi, entitiesArtifact.bytecode, $provider.getSigner());
+      const contract = await factory.deploy("");
+      await contract.deployTransaction.wait();
+
+      // $entities = requestAvailableEntities();
+      $entitiesContract = contract;
+
+      $containerContract.setEntityContractAddress(contract.address);
+
+      console.log('created', $entitiesContract.address);
+    } else {
+      console.error('entity already exists')
+    }
+  }
+
+  async function transferEntity(id) {
+    console.log(`transfer ${id}`);
+
+    const tx = await $entitiesContract.safeTransferFrom($provider.getSigner().getAddress(),
+      $containerContract.address, id, 1, [1]);
+    await tx.wait();
+  }
+
 </script>
 
 
@@ -108,6 +127,6 @@
   {#if (page?.startsWith('#edit'))}
     <Edit entitiesArtifact="{entitiesArtifact}" />
   {:else}
-    <Home bind:hasContainer on:createContainer={handleCreateContainer} on:loadContainers={handleLoadContainers} />
+    <Home bind:hasContainer />
   {/if}
 </main>

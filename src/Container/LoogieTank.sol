@@ -10,11 +10,8 @@ import "@openzeppelin/contracts/utils/Strings.sol";
 
 import 'base64-sol/base64.sol';
 import "hardhat/console.sol";
-
-
-interface TreasureEntities {
-    function renderTokenById(uint256 id) external view returns (string memory);
-}
+import "./TreasureEntities.sol";
+import "../Libraries/ToUint.sol";
 
 
 contract LoogieTank is ERC721Enumerable, Ownable, ERC1155Holder {
@@ -30,13 +27,11 @@ contract LoogieTank is ERC721Enumerable, Ownable, ERC1155Holder {
     // uint256 constant public price = 5000000000000000; // 0.005 eth
     uint256 constant public price = 0; // 0.005 eth
 
-    address entitiesContractAddress;
-
     struct Entity {
         uint256 blockAdded;
         uint256 id;
         address addr;
-        uint8 tokenType;    // ERC721 or 1155
+        uint8 tokenType;    // ERC721 (0) or 1155 (1)
         uint8 x;
         uint8 y;
         uint8 scale;
@@ -46,6 +41,7 @@ contract LoogieTank is ERC721Enumerable, Ownable, ERC1155Holder {
 
     mapping( uint256 => Entity[]) public EntitiesByTankId;
     mapping( address => uint256[]) public tanksByOwner;
+    mapping( uint256 => address) public itemsetByTankId;
 
     event ContainerMinted(uint256 id);
     event EntityReceived(uint256 id, uint256 value);
@@ -53,8 +49,23 @@ contract LoogieTank is ERC721Enumerable, Ownable, ERC1155Holder {
 
     constructor() ERC721("Tank", "TANK") {}
 
-    function setEntityContractAddress(address _entitiesContractAddress) public {
-        entitiesContractAddress = _entitiesContractAddress;
+    function setEntityContractAddress(uint256 tankId, address _entitiesContractAddress) public {
+        itemsetByTankId[tankId] = _entitiesContractAddress;
+    }
+
+    function setupNewContainer(uint256 containerType, uint256[] memory items, uint256[] memory amount) public returns (uint256) {
+        uint256 id = mintItem();
+
+        TreasureEntities itemTokens = new TreasureEntities('');
+        itemTokens.setApprovalForAll(msg.sender, true);
+
+        for(uint256 index = 0; index < items.length; index++) {
+            itemTokens.mint(address(this), items[index], amount[index], bytes(abi.encodePacked(id)));
+        }
+
+        itemsetByTankId[id] = address(itemTokens);
+
+        return id;
     }
 
     function mintItem() public returns (uint256) {
@@ -174,7 +185,7 @@ contract LoogieTank is ERC721Enumerable, Ownable, ERC1155Holder {
 
             string memory _svg;
 
-            try TreasureEntities(entitiesContractAddress).renderTokenById(0) returns (string memory __svg) {
+            try TreasureEntities(itemsetByTankId[_id]).renderTokenById(0) returns (string memory __svg) {
                 _svg = __svg;
             } catch {return "";}
 
@@ -230,23 +241,14 @@ contract LoogieTank is ERC721Enumerable, Ownable, ERC1155Holder {
             public override returns (bytes4) {
         console.log('received token with id ', id);
 
-        // FIX: Need to use data here
-        registerToken(from, 1, id, value, 1);
+        registerToken(from, ToUint.bytesToUint(data), id, value, 1);
         return super.onERC1155Received(operator, from, id, value, data);
     }
 
     function registerToken(address from, uint tankId, uint256 tokenId, uint256 value, uint8 tokenType) internal {
         bytes32 randish = keccak256(abi.encodePacked(blockhash(block.number - 1), msg.sender, address(this), tokenId, tankId));
-        EntitiesByTankId[tankId].push(Entity(
-                block.number,
-                tokenId,
-                from,
-                tokenType,
-                uint8(randish[0]),
-                uint8(randish[1]),
-                1,
-                int8(uint8(randish[2])),
-                int8(uint8(randish[3]))));
+        EntitiesByTankId[tankId].push(Entity(block.number, tokenId, from, tokenType,
+                uint8(randish[0]), uint8(randish[1]), 1, int8(uint8(randish[2])), int8(uint8(randish[3]))));
 
         emit EntityReceived(tokenId, value);
     }

@@ -1,11 +1,8 @@
 <script>
   import { onMount } from "svelte";
 
-  import { account, containers, containerContract, entitiesContract, provider } from "../lib/store.js";
-
-  import { ContractFactory } from 'ethers';
-  import { decodeTokenUri } from "../lib/utils.js";
-
+  import { containers } from "../lib/store.js";
+  
   export let entitiesArtifact;
 
 
@@ -19,40 +16,6 @@
       currentIndex = Number.parseInt(split[1]);
     }
   })
-
-  async function handleCreateItemset() {
-    console.log('creating itemset')
-
-    if (!$entitiesContract) {
-      const factory = new ContractFactory(entitiesArtifact.abi, entitiesArtifact.bytecode, $provider.getSigner());
-      const contract = await factory.deploy("");
-      await contract.deployTransaction.wait();
-
-      // $entities = requestAvailableEntities();
-      $entitiesContract = contract;
-
-      $containerContract.setEntityContractAddress(contract.address);
-
-      console.log('created', $entitiesContract.address);
-    } else {
-      console.error('entity already exists')
-    }
-  }
-
-  async function requestAvailableEntities() {
-    const encoded = await $entitiesContract.getAvailableEntityMetadata();
-    return encoded.map((item => {
-      decodeTokenUri(item);
-    }))
-  }
-
-  async function transferEntity(id) {
-    console.log(`transfer ${id}`);
-
-    const tx = await $entitiesContract.safeTransferFrom($provider.getSigner().getAddress(),
-      $containerContract.address, id, 1, [currentIndex]);
-    await tx.wait();
-  }
 </script>
 
 
@@ -64,16 +27,22 @@
 </style>
 
 
-{#if ($account)}
   <section id='action'>
-    {#if (!$entitiesContract)}
-      <button on:click={handleCreateItemset}>Create game item set</button>
-    {:else}
-      <button on:click={() => transferEntity(0)}>Transfer Gold</button>
-      <button>Load Silver</button>
-      <button>Load Elixir</button>
-    {/if}
+    <div>
+      <button>-</button>
+      <span>Gold</span>
+      <button>+</button>
+    </div>
+    <div>
+      <button>-</button>
+      <span>Silver</span>
+      <button>+</button>
+    </div>
+    <div>
+      <button>-</button>
+      <span>Elixir</span>
+      <button>+</button>
+    </div>
   </section>
 
   {@html $containers[currentIndex]?.image}
-{/if}
