@@ -63,36 +63,24 @@
     });
   }
 
-/*
-  export async function handleSetupContainer() {
+  async function handleSetupContainer(event) {
     console.log('creating');
 
     await handleConnectWallet();
 
-    const tx = await $containerContract.mintItem();
+    const containerType = event.detail.type;
+    const selectedToken = toNumberArray(event.detail.tokens);
+
+    // const factory = new ContractFactory(containerArtifact.abi, containerArtifact.bytecode, $provider.getSigner());
+    // const tankId = await factory.setupNewContainer(containerType, selectedToken, getDefaultAmounts(selectedToken));
+    // await tankId.deployTransaction.wait();
+
+    const tx = await $containerContract.setupNewContainer(containerType, selectedToken, getDefaultAmounts(selectedToken));
     await tx.wait();
 
-    const containerId = tx.value.toNumber();
-
-    const factory = new ContractFactory(entitiesArtifact.abi, entitiesArtifact.bytecode, $provider.getSigner());
-    const itemSet = await factory.deploy("");
-    await itemSet.deployTransaction.wait();
-    $entitiesContract = itemSet;
-
-    await itemSet.mint(CONTAINER_ADDRESS, 0, 200, [containerId]);
-
-
-    console.log('storing')
-
-    $containerContract.setEntityContractAddress(containerId, itemSet.address);
-
-
-    // eventually setApproval
-
-
-    // window.location.hash = `edit/${tx.id}`;
+    console.log(tx.value.toNumber());
+    window.location.hash = `edit/${tx.value.toNumber()}`;
   }
-*/
 
   export async function handleLoadContainers() {
     console.log('loading');
@@ -132,6 +120,19 @@
     await tx.wait();
   }
 
+  function toNumberArray(array) {
+    return array.map(item => Number.parseInt(item));
+  }
+
+  function getDefaultAmounts(tokens) {
+    const defaultTokens = [100, 1000, 5000];
+
+    if (tokens.length === 0) {
+      return [];
+    }
+
+    return tokens.map((token) => defaultTokens[token]);
+  }
 </script>
 
 
@@ -154,6 +155,6 @@
   {#if (page?.startsWith('#edit'))}
     <Edit entitiesArtifact="{entitiesArtifact}" />
   {:else}
-    <Home />
+    <Home on:setupContainer={handleSetupContainer} />
   {/if}
 </main>

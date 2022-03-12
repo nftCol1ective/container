@@ -4,7 +4,7 @@ import { ethers } from "ethers";
 import containerArtifact from '../../../deployments/localhost/LoogieTank.json';
 import entitiesArtifact from '../../../deployments/localhost/TreasureEntities.json';
 
-export const CONTAINER_ADDRESS = "0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9";
+export const CONTAINER_ADDRESS = "0x3F50EB36BD516E379A77FE9ca4Ca68Bbe1DDA239";
 
 
 export const account = writable(null);

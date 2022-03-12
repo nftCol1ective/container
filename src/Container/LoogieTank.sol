@@ -11,7 +11,6 @@ import "@openzeppelin/contracts/utils/Strings.sol";
 import 'base64-sol/base64.sol';
 import "hardhat/console.sol";
 import "./TreasureEntities.sol";
-import "../Libraries/ToUint.sol";
 
 
 contract LoogieTank is ERC721Enumerable, Ownable, ERC1155Holder {
@@ -70,14 +69,14 @@ contract LoogieTank is ERC721Enumerable, Ownable, ERC1155Holder {
     function setupNewContainer(uint256 containerType, uint256[] memory items, uint256[] memory amount) public returns (uint256) {
         uint256 id = mintItem();
 
-        TreasureEntities itemTokens = new TreasureEntities('');
-        itemTokens.setApprovalForAll(msg.sender, true);
+//         TreasureEntities itemTokens = new TreasureEntities('');
+//         itemTokens.setApprovalForAll(msg.sender, true);
 
         for(uint256 index = 0; index < items.length; index++) {
-            itemTokens.mint(address(this), items[index], amount[index], bytes(abi.encodePacked(id)));
+            // itemTokens.mint(address(this), items[index], amount[index], bytes(abi.encodePacked(id)));
         }
 
-        itemsetByTankId[id] = address(itemTokens);
+        // itemsetByTankId[id] = address(itemTokens);
 
         return id;
     }
@@ -254,7 +253,7 @@ contract LoogieTank is ERC721Enumerable, Ownable, ERC1155Holder {
     function onERC1155Received(address operator, address from, uint256 id, uint256 value, bytes memory data) public override returns (bytes4) {
         console.log('received token with id ', id);
 
-        registerToken(from, bytesToUint(data), id, value, 1);
+        registerToken(from, abi.decode(data, (uint)), id, value, 1);
         return super.onERC1155Received(operator, from, id, value, data);
     }
 
@@ -264,14 +263,6 @@ contract LoogieTank is ERC721Enumerable, Ownable, ERC1155Holder {
             uint8(randish[0]), uint8(randish[1]), 1, int8(uint8(randish[2])), int8(uint8(randish[3]))));
 
         emit EntityReceived(tokenId, value);
-    }
-
-    function bytesToUint(bytes memory b) public returns (uint256){
-        uint256 number;
-        for (uint i = 0; i < b.length; i++) {
-            number = number + uint256(uint8(b[i]) * (2 ** (8 * (b.length - (i + 1)))));
-        }
-        return number;
     }
 
     // Allows to extend both ERC721 and ERC1155Holder contracts from OpenZeppelin
