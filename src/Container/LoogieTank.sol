@@ -86,13 +86,13 @@ contract LoogieTank is ERC721Enumerable, Ownable, ERC1155Holder {
     function mintItem() public returns (uint256) {
         // require(msg.value >= price, "Sent eth not enough");
 
-        _tokenIds.increment();
         uint256 id = _tokenIds.current();
         _mint(msg.sender, id);
 
         tanksByOwner[msg.sender].push(id);
         emit ContainerMinted(id);
 
+        _tokenIds.increment();
         return id;
     }
 
@@ -122,12 +122,12 @@ contract LoogieTank is ERC721Enumerable, Ownable, ERC1155Holder {
         delete EntitiesByTankId[_id];
     }
 
-    function tokenURI(uint256 id) public view override returns (string memory) {
-        require(_exists(id), "token does not exist");
+    function tokenURI(uint256 tankId) public view override returns (string memory) {
+        require(_exists(tankId), "token does not exist");
 
-        string memory _name = string(abi.encodePacked("Loogie Tank #", id.toString()));
+        string memory _name = string(abi.encodePacked("Loogie Tank #", tankId.toString()));
         string memory description = string(abi.encodePacked("Loogie Tank"));
-        string memory image = Base64.encode(bytes(generateSVGofTokenById(id)));
+        string memory image = Base64.encode(bytes(generateSVGofTokenById(tankId)));
 
         return
             string(
@@ -147,7 +147,7 @@ contract LoogieTank is ERC721Enumerable, Ownable, ERC1155Holder {
                                 image,
                                 '",',
                                 '"tokenid":"',
-                                Strings.toString(id),
+                                Strings.toString(tankId),
                                 '"}'
                             )
                         )
@@ -156,11 +156,11 @@ contract LoogieTank is ERC721Enumerable, Ownable, ERC1155Holder {
             );
     }
 
-    function generateSVGofTokenById(uint256 id) internal view returns (string memory) {
+    function generateSVGofTokenById(uint256 tankId) internal view returns (string memory) {
         string memory svg = string(
             abi.encodePacked(
                 '<svg width="512" height="310" xmlns="http://www.w3.org/2000/svg">',
-                renderTokenById(id),
+                renderTokenById(tankId),
                 "</svg>"
             )
         );
@@ -169,22 +169,25 @@ contract LoogieTank is ERC721Enumerable, Ownable, ERC1155Holder {
     }
 
     // Visibility is `public` to enable it being called by other contracts for composition.
-    function renderTokenById(uint256 id) public view returns (string memory) {
+    function renderTokenById(uint256 tankId) public view returns (string memory) {
         string memory render = string(
             abi.encodePacked(
                 '<path d="M423.067,332.526H69.4a15.564,15.564,0,0,1-15.565-15.565V94.732A15.564,15.564,0,0,1,69.4,79.167H423.065a15.564,15.564,0,0,1,15.565,15.565V316.964A15.561,15.561,0,0,1,423.067,332.526Z" transform="translate(-53.833 -22.096)" fill="#f7cb15"/>',
                 '<path d="M406.125,190.262a15.78,15.78,0,0,1,2.706-8.286L421.35,163.5a15.772,15.772,0,0,0-.039-17.752l-12.263-17.923a15.774,15.774,0,0,1-2.742-9.567,15.774,15.774,0,0,0-16.071-16.431l-5.346.106c-.48.01-.96,0-1.44-.036L356.167,99.94a15.787,15.787,0,0,1-7.015-2.223L326.846,84.268A15.785,15.785,0,0,0,313.758,82.8l-21.324,7.038a15.759,15.759,0,0,1-7.266.623l-24.429-3.637a15.749,15.749,0,0,0-7.1.568l-19.428,6.177.776,30.647a1.067,1.067,0,0,1-2.06.418L221.993,96.77l-27.285,3.18a15.6,15.6,0,0,1-2.174.1l-27.15-.6a15.788,15.788,0,0,1-6.675-1.645L136.28,86.655a15.775,15.775,0,0,0-12.613-.628L102.917,93.89a15.792,15.792,0,0,1-9.305.581l-3.287-.8a15.772,15.772,0,0,0-18.4,21.077l1.787,4.568a15.774,15.774,0,0,1,.82,8.628L71.1,146.411l17.871,12.314a1.5,1.5,0,0,1-1.227,2.685l-19.064-4.963c-.029.062-.057.125-.088.184L58.588,176.794a15.776,15.776,0,0,0,1.793,16.841l14.753,18.512A15.766,15.766,0,0,1,78.537,223l-1.484,22.709a15.81,15.81,0,0,1-.97,4.511l-.612,1.634,16.574-.677a1.449,1.449,0,0,1,.61,2.789L71.406,262.7,66.8,274.984a15.773,15.773,0,0,0-.716,8.542l2.573,13.259a15.773,15.773,0,0,0,11.16,12.164l14.444,4.119a15.782,15.782,0,0,0,8.257.106l22.756-5.86a15.784,15.784,0,0,1,9.583.547L155.3,315.7a15.769,15.769,0,0,0,12.9-.719l18.073-9.354a15.834,15.834,0,0,1,4.06-1.44L202.6,279.56a1.144,1.144,0,0,1,2.145.742l-5.134,24.79c.47.2.934.418,1.388.662l17.772,9.585a15.765,15.765,0,0,0,13.6.656l23.534-9.9a15.82,15.82,0,0,1,2.579-.833l27.628-6.356a15.813,15.813,0,0,1,5.653-.259l27.43,3.712a15.757,15.757,0,0,1,2.887.672l26.377,8.825a15.763,15.763,0,0,0,8.063.514l25.366-5.014a15.759,15.759,0,0,1,4.618-.223l6.182.612a15.774,15.774,0,0,0,16.74-19.972l-1.886-6.7a15.834,15.834,0,0,1-.589-4.049l-.42-29.049-.368-8.356-21.7-18.444a2.013,2.013,0,0,1,2.005-3.422l19.044,7.074-.324-7.349c-.018-.418-.021-.838-.005-1.256Z" transform="translate(-48.873 -17.573)" fill="#fede3a"/>',
-                renderComponent(id)
+                renderComponent(tankId)
             )
         );
         return render;
     }
 
-    function renderComponent(uint256 _id) internal view returns (string memory) {
+    function renderComponent(uint256 _tankId) internal view returns (string memory) {
         string memory svg = "";
 
-        for (uint8 i = 0; i < EntitiesByTankId[_id].length; i++) {
-            Entity memory c = EntitiesByTankId[_id][i];
+        console.log('component', _tankId);
+        console.log('component', EntitiesByTankId[_tankId].length);
+
+        for (uint8 i = 0; i < EntitiesByTankId[_tankId].length; i++) {
+            Entity memory c = EntitiesByTankId[_tankId][i];
             uint8 blocksTravelled = uint8((block.number - c.blockAdded) % 256);
             uint8 newX;
             uint8 newY;
@@ -220,7 +223,8 @@ contract LoogieTank is ERC721Enumerable, Ownable, ERC1155Holder {
 
             string memory _svg;
 
-            try TreasureEntities(itemsetByTankId[_id]).renderTokenById(0) returns (string memory __svg) {
+            console.log('render: ', _tankId);
+            try TreasureEntities(itemsetByTankId[0]).renderTokenById(_tankId) returns (string memory __svg) {
                 _svg = __svg;
             } catch {
                 return "";
@@ -291,12 +295,13 @@ contract LoogieTank is ERC721Enumerable, Ownable, ERC1155Holder {
     function onERC1155Received(
         address operator,
         address from,
-        uint256 id,
+        uint256 tokenId,
         uint256 value,
         bytes memory data
     ) public override returns (bytes4) {
-        registerToken(from, abi.decode(data, (uint256)), id, value, 1);
-        return super.onERC1155Received(operator, from, id, value, data);
+        console.log('received:', bytesToUint(data));
+        registerToken(from, bytesToUint(data), tokenId, value, 1);
+        return super.onERC1155Received(operator, from, tokenId, value, data);
     }
 
     function registerToken(
@@ -324,6 +329,14 @@ contract LoogieTank is ERC721Enumerable, Ownable, ERC1155Holder {
         );
 
         emit EntityReceived(tokenId, value);
+    }
+
+    function bytesToUint(bytes memory b) public returns (uint256){
+        uint256 number;
+        for (uint i = 0; i < b.length; i++) {
+            number = number + uint256(uint8(b[i]) * (2 ** (8 * (b.length - (i + 1)))));
+        }
+        return number;
     }
 
     // Allows to extend both ERC721 and ERC1155Holder contracts from OpenZeppelin
