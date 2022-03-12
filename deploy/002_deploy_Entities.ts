@@ -15,7 +15,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     contract: "/src/Container/TreasureEntities.sol:TreasureEntities",
     args: [''],
     log: true,
-    autoMine: true, // speed up deployment on local network (ganache, hardhat), no effect on live networks
+    autoMine: false, // speed up deployment on local network (ganache, hardhat), no effect on live networks
   });
 };
 

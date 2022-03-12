@@ -58,18 +58,27 @@ contract LoogieTank is ERC721Enumerable, Ownable, ERC1155Holder {
     function setupNewContainer(
         uint256 containerType,
         uint256[] memory items,
-        uint256[] memory amount
+        uint256[] memory amount,
+        address entityContractAddress
     ) public returns (uint256) {
         uint256 id = mintItem();
+        console.log('mint id: ', id);
 
+        // TODO: Fails because of size limit. Find a solution
+        //       Need to provide an address to an entity contract from client side for now
         //         TreasureEntities itemTokens = new TreasureEntities('');
         //         itemTokens.setApprovalForAll(msg.sender, true);
 
+        setEntityContractAddress(id, entityContractAddress);
         for (uint256 index = 0; index < items.length; index++) {
-            // itemTokens.mint(address(this), items[index], amount[index], bytes(abi.encodePacked(id)));
-        }
+            // TODO: Mint when deployment above works
+            // mint(address(this), items[index], amount[index], bytes(abi.encodePacked(id)));
 
-        // itemsetByTankId[id] = address(itemTokens);
+            // TODO: Fails because item contract is deployed from different address
+            //       Need to set approval or role for container contract
+            TreasureEntities(itemsetByTankId[id]).safeTransferFrom(
+                entityContractAddress, address(this), items[index], amount[index], abi.encode(id));
+        }
 
         return id;
     }
@@ -285,8 +294,6 @@ contract LoogieTank is ERC721Enumerable, Ownable, ERC1155Holder {
         uint256 value,
         bytes memory data
     ) public override returns (bytes4) {
-        console.log("received token with id ", id);
-
         registerToken(from, abi.decode(data, (uint256)), id, value, 1);
         return super.onERC1155Received(operator, from, id, value, data);
     }
