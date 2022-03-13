@@ -93,7 +93,7 @@ contract TreasureEntities is ERC1155PresetMinterPauser, Ownable, SvgElements {
     function generateSVGofTokenById(uint256 id) internal view returns (string memory) {
         string memory svg = string(
             abi.encodePacked(
-                '<svg viewBox="0 0 274 373" xmlns="http://www.w3.org/2000/svg">',
+                "<svg viewBox='0 0 274 373' xmlns='http://www.w3.org/2000/svg'>",
                 renderTokenById(id),
                 "</svg>"
             )
@@ -107,7 +107,7 @@ contract TreasureEntities is ERC1155PresetMinterPauser, Ownable, SvgElements {
     function renderTokenById(uint256 id) public view returns (string memory) {
         string memory render;
         if (id == GOLD) {
-            render = goldSVG;
+            render = renderGold(balanceOf(msg.sender, GOLD));
         }
         if (id == SILVER) {
             render = silverSVG;
