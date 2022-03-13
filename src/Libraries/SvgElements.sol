@@ -61,7 +61,7 @@ contract SvgElements {
     // If balance is 10000 scale is 1
     function getScale(uint256 balance) private pure returns (string memory) {
         uint256 scale = 10 + 10 * ((balance - 1) / 111);
-        if (scale >= 1) {
+        if (scale >= 100) {
             return "1";
         }
         return string(abi.encodePacked("0.", scale.toString()));
